@@ -1,7 +1,5 @@
 import autoreload
 
-%load_ext autoreload
-%autoreload 2
 
 import torch
 import torchvision
@@ -231,15 +229,6 @@ class Network():
 
 
 
-models = [Net() for i in range(3)]
-criterion = nn.CrossEntropyLoss()
-
-m = trainset_node_split(trainset, 3)
-
-trainloaders = [torch.utils.data.DataLoader(m[i], batch_size=4, shuffle=True, num_workers=2) for i in range(3)]
-
-
-net = Network(torch.ones([3,3]),models, [1e-3,1e-3,1e-3],trainloaders, nn.CrossEntropyLoss())
 
 
 def count_correct(outputs, labels):
@@ -293,6 +282,84 @@ def forward_test(model, loader):
     print('\n=> Test acc  : {:7.3f}%'.format(test_acc))
 
     return test_acc, test_loss
+
+def quantizer_topk(gradient, k = 5):
+    absoulte = torch.abs( gradient )
+    sign  = torch.sign(gradient)
+    values,indices = torch.topk( gradient, k , sorted = False )
+    gradient = torch.zeros( *gradient.shape )
+    gradient[indices] = values
+    #transform gradient to torch
+    return gradient*sign
+
+def quantizer_lossy( gradient, k = 5 ):
+    norm = torch.norm( gradient )
+    absoulte = torch.abs( gradient )
+    absoulte = ( absoulte/norm )*k
+    floor = torch.floor(gradient)
+    random_ceil = torch.rand(*gradient.shape) < ( gradient - floor )
+    print( random_ceil )
+    floor = ( floor + random_ceil.float() ) * (1/k)
+    #rescale
+    return (norm) * ( torch.sign(gradient) * floor )
+    
+    
+class Agg_Server():
+    
+    def __init__(self, W, models, clr_model, learning_rates, clr, loaders, criterion):
+        
+        self.num_nodes = W.shape[0]
+        self.server_weights = W
+        
+        self.central_server = Node(clr, None, clr_model, criterion)
+        
+        self.nodes = OrderedDict()
+        
+        for i in range(self.num_nodes):
+            self.nodes[i] = Node(learning_rates[i], loaders[i], models[i], criterion)
+            
+            if(W[i, 0] > 0):
+                self.central_server.neighbors.append(i)
+                self.central_server.neighbor_wts[i] = W[i, 0]
+
+            
+    def simulate(self, iterations, epochs):
+        
+        for i in range(epochs):
+            for j in range(iterations):
+                lr = 1e-3
+                if(j % 500 == 0):
+                    print(j)
+                    
+                for k in range(self.num_nodes):
+                    self.nodes[k].compute_gradient()
+    
+
+                for m,param in enumerate(self.central_server.model.parameters()):
+                    
+                    for a,n in enumerate(self.central_server.neighbors):
+                        
+                        if self.nodes[n].curr_gt[m] is None:
+                            continue
+                        
+                        if(a == 0):
+                            gt = torch.sign(self.nodes[n].curr_gt[m])
+                            gt_update = self.central_server.neighbor_wts[n]*gt
+                            wt_sum = self.central_server.neighbor_wts[n]
+                        else:
+                            gt = torch.sign(self.nodes[n].curr_gt[m])
+                            gt_update= gt_update + self.central_server.neighbor_wts[n]*gt
+                            wt_sum = wt_sum + self.central_server.neighbor_wts[n]
+                        
+                    gt_update = gt_update/wt_sum
+                    param.data = param.data - lr*gt_update
+                    
+                
+                for a,n in enumerate(self.central_server.neighbors):
+                    
+                    self.nodes[n].model.load_state_dict(self.central_server.model.state_dict())
+                
+                    #self.nodes[str(l)].update_model()
 
 
 
