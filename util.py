@@ -45,11 +45,11 @@ def ring( num_workers ):
 	return ring
 
 def torus(sqrt_num_workers):
-	num_workers = sqrt_num_workers*sqrt_num_workers
+    num_workers = sqrt_num_workers*sqrt_num_workers
     torus = networkx.generators.lattice.grid_2d_graph(sqrt_num_workers,sqrt_num_workers, periodic=True)
     torus = networkx.adjacency_matrix(torus).toarray()
     for i in range(num_worker):
-		torus[i,i] = 1
+        torus[i,i] = 1
     return torus
 
 def degree_k( num_workers , k ):
