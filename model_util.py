@@ -75,4 +75,28 @@ def degree_k( num_workers , k ):
         W[i,i] = 1
     return W
 
+def trainset_node_split(dataset, N, seed = 0):
+    np.random.seed(seed)
+    a = np.arange(len(dataset))
+    np.random.shuffle(a)
+    datasets = {}
+    size = int(len(dataset)/N)
+    for i in range(N):
+        datasets[i] = Subset(dataset, a[i*size:(i+1)*size].tolist())
+    return datasets
 
+def count_correct(outputs, labels,criterion):
+    """ count correct predictions """
+
+    if isinstance(criterion, nn.BCELoss):
+        predicted = (outputs > 0.5).to(dtype=torch.int64)
+        labels = (labels  > 0.5).to(dtype=torch.int64)
+    elif isinstance(criterion, nn.CrossEntropyLoss):
+        _, predicted = outputs.max(1)
+    else:
+        print('Error in criterion')
+        raise ValueError
+
+    correct = (predicted == labels).sum().item()
+
+    return correct

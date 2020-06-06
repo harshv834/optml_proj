@@ -13,6 +13,8 @@ from collections import OrderedDict
 from torch.utils.data import Subset
 from torch.optim.optimizer import Optimizer
 from optimizer import *
+from model_util import *
+import tqdm
 
 class Net(nn.Module):
     def __init__(self):
@@ -116,8 +118,8 @@ class Network():
             record_sims[k] = []
 
         
-        for i in range(epochs):
-            for j in range(iterations):
+        for i in tqdm.tqdm(range(epochs)):
+            for j in tqdm.tqdm(range(iterations)):
                 if((j+1) % 500 == 0 and j != 0):
    
                   test_acc = self.consensus_test(self.testloader, self.batch_size)
@@ -134,6 +136,7 @@ class Network():
                 
                 self.attack()
                 self.update_network()
+        return record_sims
 
     def update_network(self):            
         for l in range(self.num_nodes):
@@ -141,15 +144,17 @@ class Network():
                 if param.grad is None:
                     continue
                       
-            gt_update = self.nodes[l].curr_gt[m].copy()
+            gt_update = self.nodes[l].curr_gt[m].clone()
             wt_sum = 1
             for n in self.nodes[l].neighbors:
                 gt_update= gt_update + self.nodes[l].neighbor_wts[n] *self.nodes[n].curr_gt[m]
                 wt_sum = wt_sum + abs( self.nodes[l].neighbor_wts[n] )
             gt_update = gt_update/wt_sum
             param.grad.data = gt_update
-        self.node[l].update_model()
-
+        self.nodes[l].update_model()
+        
+    def attack(self):
+        return
 
 class Node():
     """Node(Choco_Gossip): x_i(t+1) = x_i(t) + gamma*Sum(w_ij*[xhat_j(t+1) - xhat_i(t+1)])"""
@@ -167,7 +172,7 @@ class Node():
         
         self.model = model
         self.chosen_device = chosen_device
-        
+        self.batch_size = batch_size
         
         self.x_i = OrderedDict()
         self.model_params = []
@@ -197,6 +202,7 @@ class Node():
         output = self.model(inputs)
         loss = self.criterion(output, targets)
         loss.backward()
+        gt = OrderedDict()
         for k,v in enumerate(self.model.parameters()):
             if v.grad is not None:
                 if quantizer is not None:
@@ -242,13 +248,13 @@ class Node():
                 self.model.to(self.chosen_device)
                 outputs = self.model(inputs)
                 
-                loss = criterion(outputs,labels)
+                loss = self.criterion(outputs,labels)
                 
                 count_batches += 1
 
                 running_losses += loss.item()
 
-                correct += count_correct(outputs, labels)
+                correct += count_correct(outputs, labels,self.criterion)
                 total += labels.size(0)
 
                 running_losses = running_losses/self.batch_size
@@ -271,13 +277,13 @@ class Node():
                 self.model.to(self.chosen_device)
                 outputs = self.model(inputs)
                 
-                loss = criterion(outputs,labels)
+                loss = self.criterion(outputs,labels)
                 
                 count_batches += 1
 
                 running_losses += loss.item()
 
-                correct += count_correct(outputs, labels)
+                correct += count_correct(outputs, labels, self.criterion)
                 total += labels.size(0)
 
                 running_losses = running_losses/self.batch_size
