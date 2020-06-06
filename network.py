@@ -72,7 +72,7 @@ class Network():
                     self.nodes[i].neighbor_wts[j] = W[i, j]
                     
             
-    def consensus_test(self, loader, batch_size):
+    def consensus_test(self, loader):
         """ forwards test samples and calculates the test accuracy """
 
         #model.to(chosen_device)
@@ -83,7 +83,6 @@ class Network():
         with torch.no_grad():
 
             for batch_idx, sample in enumerate(loader):
-
                 inputs, labels = sample[0].to(self.chosen_device), sample[1].to(self.chosen_device)
                 #inputs, labels = sample[0], sample[1]
                 for i in range(self.num_nodes):
@@ -138,20 +137,21 @@ class Network():
                 self.update_network()
         return record_sims
 
-    def update_network(self):            
+    def update_network(self): 
         for l in range(self.num_nodes):
-            for m,param in enumerate(self.nodes[l].model.parameters()):
-                if param.grad is None:
-                    continue
+            for group_id in range(len(self.nodes[l].optimizer.param_groups)):
+                for m,param in enumerate(self.nodes[l].optimizer.param_groups[group_id]['params']):
+                    if param.grad is None:
+                        continue
                       
-            gt_update = self.nodes[l].curr_gt[m].clone()
-            wt_sum = 1
-            for n in self.nodes[l].neighbors:
-                gt_update= gt_update + self.nodes[l].neighbor_wts[n] *self.nodes[n].curr_gt[m]
-                wt_sum = wt_sum + abs( self.nodes[l].neighbor_wts[n] )
-            gt_update = gt_update/wt_sum
-            param.grad.data = gt_update
-        self.nodes[l].update_model()
+                    gt_update = self.nodes[l].curr_gt[group_id][m].clone()
+                    wt_sum = 1
+                    for n in self.nodes[l].neighbors:
+                        gt_update= gt_update + self.nodes[l].neighbor_wts[n] *self.nodes[n].curr_gt[group_id][m]
+                        wt_sum = wt_sum + abs( self.nodes[l].neighbor_wts[n] )
+                    gt_update = gt_update/wt_sum
+                    param.grad.data -= gt_update
+        
         
     def attack(self):
         return
@@ -202,13 +202,17 @@ class Node():
         output = self.model(inputs)
         loss = self.criterion(output, targets)
         loss.backward()
-        gt = OrderedDict()
-        for k,v in enumerate(self.model.parameters()):
-            if v.grad is not None:
-                if quantizer is not None:
-                    gt[k] = quantizer(v.grad)
-                else:
-                    gt[k] = v.grad
+        
+        self.optimizer.step()
+        gt = []
+        for group in self.optimizer.param_groups:
+            param_update = OrderedDict()
+            for k,param in enumerate(group['params']):
+                if param.grad is None:
+                    continue
+                state = self.optimizer.state[param]
+                param_update[k] = state['update'][k].clone().detach()
+            gt.append(param_update)    
         self.curr_gt =  gt
         return
     
@@ -218,11 +222,6 @@ class Node():
         with torch.no_grad():
             self.model.load_state_dict(W, strict=False)
         
-        return
-    
-    def update_model(self):
-        ## Assign Parameters after obtaining Consensus##
-        self.optimizer.step()        
         return
     
     
