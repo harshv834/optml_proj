@@ -12,7 +12,44 @@ import os
 from collections import OrderedDict
 from torch.utils.data import Subset
 from torch.optim.optimizer import Optimizer
+from optimizer import *
 
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        self.conv1 = nn.Conv2d(1, 6, 5)
+        #self.bn1 = nn.BatchNorm2d(6)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(6, 16, 5)
+        #self.bn2 = nn.BatchNorm2d(16)
+        self.fc1 = nn.Linear(16 * 4 * 4, 64)
+        #self.fc2 = nn.Linear(120, 84)
+        self.fc2 = nn.Linear(64, 10)
+        self.init_weights()
+
+    def forward(self, x):
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = x.view(-1, 16 * 4 * 4)
+        x = F.relu(self.fc1(x))
+        #x = F.relu(self.fc2(x))
+        x = self.fc2(x)
+        return x
+
+    def init_weights(self):
+        
+        for m in self.modules():
+
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, a=0, mode='fan_out',nonlinearity='relu')
+
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+
+            elif isinstance(m, nn.Linear):
+                m.bias.data.zero_()
+                torch.nn.init.xavier_uniform_(m.weight)
 class Network():
     """Define graph"""
     

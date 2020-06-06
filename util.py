@@ -33,16 +33,16 @@ def quantizer_lossy( gradient, k = 64 ):
     return (norm) * ( torch.sign(gradient) * floor )
 
 def ring( num_workers ):
-	ring = torch.zeros([num_workers, num_workers])
-	for i in range(num_workers-1):
-	    ring[i,i+1] = 1.0
-	    ring[i,i-1] = 1.0
-	#close
-	ring[num_workers - 1, 0 ] = 1.0
-	ring[num_workers - 1, num_workers-2 ] = 1.0
-	for i in range(num_worker):
-		ring[i,i] = 1
-	return ring
+    ring = torch.zeros([num_workers, num_workers])
+    for i in range(num_workers-1):
+        ring[i,i+1] = 1.0
+        ring[i,i-1] = 1.0
+    #close
+    ring[num_workers - 1, 0 ] = 1.0
+    ring[num_workers - 1, num_workers-2 ] = 1.0
+    for i in range(num_worker):
+        ring[i,i] = 1
+    return ring
 
 def torus(sqrt_num_workers):
     num_workers = sqrt_num_workers*sqrt_num_workers
@@ -53,26 +53,26 @@ def torus(sqrt_num_workers):
     return torus
 
 def degree_k( num_workers , k ):
-	half_k = k/2
-	W  = torch.zeros([num_workers, num_workers])
-	for i in range(num_workers):
-		
-		count = 0
-		column = i
-		while count < half_k:
-			count = count+1
-			#left
-			if i-count >= 0 :
-				W[i, i-count]  = 1.0
-			else :
-				W[ i, num_workers + i - count ] = 1.0
-			#right
-			if i+count < num_workers:
-				W[i, i+count]  = 1.0
-			else:
-				W[i, i+count - n ] = 1.0				
-	for i in range(num_worker):
-		W[i,i] = 1
-	return W
+    half_k = k/2
+    W  = torch.zeros([num_workers, num_workers])
+    for i in range(num_workers):
+        
+        count = 0
+        column = i
+        while count < half_k:
+            count = count+1
+            #left
+            if i-count >= 0 :
+                W[i, i-count]  = 1.0
+            else :
+                W[ i, num_workers + i - count ] = 1.0
+            #right
+            if i+count < num_workers:
+                W[i, i+count]  = 1.0
+            else:
+                W[i, i+count - n ] = 1.0				
+    for i in range(num_worker):
+        W[i,i] = 1
+    return W
 
 
