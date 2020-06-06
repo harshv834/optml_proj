@@ -40,7 +40,7 @@ def ring( num_workers ):
     #close
     ring[num_workers - 1, 0 ] = 1.0
     ring[num_workers - 1, num_workers-2 ] = 1.0
-    for i in range(num_worker):
+    for i in range(num_workers):
         ring[i,i] = 1
     return ring
 
@@ -48,7 +48,7 @@ def torus(sqrt_num_workers):
     num_workers = sqrt_num_workers*sqrt_num_workers
     torus = networkx.generators.lattice.grid_2d_graph(sqrt_num_workers,sqrt_num_workers, periodic=True)
     torus = networkx.adjacency_matrix(torus).toarray()
-    for i in range(num_worker):
+    for i in range(num_workers):
         torus[i,i] = 1
     return torus
 
@@ -70,8 +70,8 @@ def degree_k( num_workers , k ):
             if i+count < num_workers:
                 W[i, i+count]  = 1.0
             else:
-                W[i, i+count - n ] = 1.0				
-    for i in range(num_worker):
+                W[i, i+count - num_workers ] = 1.0				
+    for i in range(num_workers):
         W[i,i] = 1
     return W
 
