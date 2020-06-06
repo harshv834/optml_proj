@@ -42,9 +42,11 @@ class EFSGD(Optimizer):
 class Node():
     """Node(Choco_Gossip): x_i(t+1) = x_i(t) + gamma*Sum(w_ij*[xhat_j(t+1) - xhat_i(t+1)])"""
     
-    def __init__(self, gamma, loader, model, criterion ):
+    def __init__(self, gamma, loader, model, criterion, isbyz ):
         
         self.neighbors = []
+
+        self.isbyz = isbyz
 
         self.neighbor_wts = {}
         
@@ -89,8 +91,14 @@ class Node():
                     gt[k] = quantizer(v.grad)
                 else:
                     gt[k] = v.grad
+            if( self.isbyz ):
+                gt[k] = self.attack(gt)
         self.curr_gt =  gt
         return
+
+    def attack(grad):
+        #TODO
+        return grad
     
     def assign_params(self, W):
         """Assign dict W to model"""
