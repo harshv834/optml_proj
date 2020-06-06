@@ -40,22 +40,39 @@ def ring( num_workers ):
 	#close
 	ring[num_workers - 1, 0 ] = 1.0
 	ring[num_workers - 1, num_workers-2 ] = 1.0
+	for i in range(num_worker):
+		ring[i,i] = 1
 	return ring
 
-def torus( sqrt_num_workers):
+def torus(sqrt_num_workers):
 	num_workers = sqrt_num_workers*sqrt_num_workers
-	torus = torch.zeros([num_workers, num_workers])
+    torus = networkx.generators.lattice.grid_2d_graph(sqrt_num_workers,sqrt_num_workers, periodic=True)
+    torus = networkx.adjacency_matrix(torus).toarray()
+    for i in range(num_worker):
+		torus[i,i] = 1
+    return torus
+
+def degree_k( num_workers , k ):
+	half_k = k/2
+	W  = torch.zeros([num_workers, num_workers])
 	for i in range(num_workers):
-		row = i / sqrt_num_workers
-		column  = i % sqrt_num_workers
-		neighbour = [-1,0,1]
-		for a in neighbour:
-			if( row + a < 0 or row + a == sqrt_num_workers ):
-				continue
-			if( r+1 > )
-
-
-
-def degree_k( num_worker , k ):
+		
+		count = 0
+		column = i
+		while count < half_k:
+			count = count+1
+			#left
+			if i-count >= 0 :
+				W[i, i-count]  = 1.0
+			else :
+				W[ i, num_workers + i - count ] = 1.0
+			#right
+			if i+count < num_workers:
+				W[i, i+count]  = 1.0
+			else:
+				W[i, i+count - n ] = 1.0				
+	for i in range(num_worker):
+		W[i,i] = 1
+	return W
 
 

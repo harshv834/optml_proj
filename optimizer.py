@@ -25,7 +25,6 @@ class EFSGD(Optimizer):
                     
     def step(self):
         for group in self.param_groups:
-            curr_grad = OrderedDict()
             for k,param in enumerate(group['params']):
                 if param.grad is None:
                     continue
@@ -38,8 +37,7 @@ class EFSGD(Optimizer):
                 #EFSGD
                 g = ( torch.sum( torch.abs(p) )/p.nelement() ) * torch.sign(p)
                 state['error_correction'] = p - g
-                curr_grad[k] = g
-            return curr_grad
+                param.data = param.data - g
 
 class Node():
     """Node(Choco_Gossip): x_i(t+1) = x_i(t) + gamma*Sum(w_ij*[xhat_j(t+1) - xhat_i(t+1)])"""
@@ -85,7 +83,13 @@ class Node():
         output = self.model(inputs)
         loss = self.criterion(output, targets)
         loss.backward()
-        self.curr_gt = self.optimizer.step()
+        for k,v in enumerate(self.model.parameters()):
+            if v.grad is not None:
+                if quantizer is not None:
+                    gt[k] = quantizer(v.grad)
+                else:
+                    gt[k] = v.grad
+        self.curr_gt =  gt
         return
     
     def assign_params(self, W):
@@ -97,12 +101,6 @@ class Node():
         return
     
     def update_model(self):
-        
-        ### Implement Algorithm ###
-        
         ## Assign Parameters after obtaining Consensus##
-        
-        
-        self.assign_params(self.x_i)
-        
+        self.optimizer.step()        
         return
