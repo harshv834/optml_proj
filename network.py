@@ -12,8 +12,8 @@ import os
 from collections import OrderedDict
 from torch.utils.data import Subset
 from torch.optim.optimizer import Optimizer
-from optimizer import *
-from model_util import *
+from .optimizer import *
+from .model_util import *
 import tqdm
 
 class Net(nn.Module):
@@ -86,7 +86,6 @@ class Network():
                 inputs, labels = sample[0].to(self.chosen_device), sample[1].to(self.chosen_device)
                 #inputs, labels = sample[0], sample[1]
                 for i in range(self.num_nodes):
-                    self.nodes[i].model.to(self.chosen_device)
                     outputs = self.nodes[i].model(inputs)
                     if(i == 0):
                         consensus = torch.zeros_like(outputs)
@@ -94,7 +93,7 @@ class Network():
                     logits, predicted = outputs.max(1)
                     #print(logits)
                     
-                    for i in range(batch_size):
+                    for i in range(labels.size(0)):
                         consensus[i] = consensus[i]+torch.where(outputs[i].eq(logits[i]), torch.Tensor([1]).to(self.chosen_device), torch.Tensor([0]).to(self.chosen_device))              
                 
                 logits, final_pred = consensus.max(1)
@@ -121,7 +120,7 @@ class Network():
             for j in tqdm.tqdm(range(iterations)):
                 if((j+1) % 500 == 0 and j != 0):
    
-                  test_acc = self.consensus_test(self.testloader, self.batch_size)
+                  test_acc = self.consensus_test(self.testloader)
                   for k in range(self.num_nodes):
                     loss_dict = self.nodes[k].calc_node_loss(self.testloader, self.chosen_device)
                     loss_dict["consensus_test"] = test_acc
@@ -187,7 +186,7 @@ class Node():
         self.criterion = criterion
         
         self.dataiter = iter(self.dataloader)
-        
+        self.model.to(self.chosen_device)
         self.optimizer = EFSGD(self.model.parameters() , lr = 1e-3 )
                 
     
@@ -199,6 +198,9 @@ class Node():
         except StopIteration:
             self.dataiter = iter(self.dataloader)
             inputs, targets = self.dataiter.next()
+        inputs = inputs.to(self.chosen_device)
+        targets = targets.to(self.chosen_device)
+        
         output = self.model(inputs)
         loss = self.criterion(output, targets)
         loss.backward()

@@ -12,16 +12,17 @@ import os
 from collections import OrderedDict
 from torch.utils.data import Subset
 from torch.optim.optimizer import Optimizer
-from model_util import *
+from .model_util import *
 
 class EFSGD(Optimizer):
-    def __init__(self, params, lr ):
+    def __init__(self, params, lr):
         super(EFSGD,self).__init__( params , dict( lr = lr ) )
         for group in self.param_groups:
             for param in group['params']:
                 state = self.state[param]
                 state['error_correction'] = torch.zeros_like( param.data )
                 state['lr'] = lr
+          
                 
                     
     def step(self):
