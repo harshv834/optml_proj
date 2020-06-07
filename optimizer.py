@@ -21,7 +21,8 @@ class EFSGD(Optimizer):
                 state = self.state[param]
                 state['error_correction'] = torch.zeros_like( param.data )
                 state['lr'] = lr
-                state['curr_grad'] = None
+                state['update'] = OrderedDict()
+                
                     
     def step(self):
         for group in self.param_groups:
@@ -37,8 +38,9 @@ class EFSGD(Optimizer):
                 #EFSGD
                 g = ( torch.sum( torch.abs(p) )/p.nelement() ) * torch.sign(p)
                 state['error_correction'] = p - g
-                param.data = param.data - g
+                state['update'][k] = g
 
+<<<<<<< HEAD
 class Node():
     """Node(Choco_Gossip): x_i(t+1) = x_i(t) + gamma*Sum(w_ij*[xhat_j(t+1) - xhat_i(t+1)])"""
     
@@ -51,28 +53,30 @@ class Node():
         self.neighbor_wts = {}
         
         self.step_size = gamma
+=======
+class QEFSGD(Optimizer):
+    def __init__(self, params, lr ):
+        super(EFSGD,self).__init__( params , dict( lr = lr ) )
+        for group in self.param_groups:
+            for param in group['params']:
+                state = self.state[param]
+                state['error_correction'] = torch.zeros_like( param.data )
+                state['lr'] = lr
+>>>>>>> 3b8b959da766bd496c24acdeef0cb208945617d5
                 
-        self.dataloader = loader
-        
-        self.model = model
-        
-        self.x_i = OrderedDict()
-        
-        self.model_params = []
-        for (k,v) in self.model.state_dict().items():
-            
-            self.model_params.append(k)
-            self.x_i[k] = v.clone().detach()
-            
-        #for a in self.model.parameters():
-        #    self.x_i.append(a)
-        
-        self.criterion = criterion
-        
-        self.dataiter = iter(self.dataloader)
-        
-        self.optimizer = EFSGD(self.model.parameters() , lr = 1e-3 )
+                    
+    def step(self):
+        for group in self.param_groups:
+            for k,param in enumerate(group['params']):
+                if param.grad is None:
+                    continue
+                state = self.state[param] 
+                error_corr = state['error_correction']
+                lr = state['lr']
+                p = param.grad.data
+                p = lr*p + error_corr 
                 
+<<<<<<< HEAD
     
     def compute_gradient(self, quantizer=None, ):
         """Computes nabla(x_i, samples) and returns estimate after quantization"""        
@@ -112,3 +116,9 @@ class Node():
         ## Assign Parameters after obtaining Consensus##
         self.optimizer.step()        
         return
+=======
+                #EFSGD
+                g = ( torch.sum( torch.abs(p) )/p.nelement() ) * torch.sign(p)
+                state['error_correction'] = p - g
+                param.data = param.data - g
+>>>>>>> 3b8b959da766bd496c24acdeef0cb208945617d5
