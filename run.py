@@ -16,6 +16,8 @@ import tqdm
 from network import *
 from optimizer import *
 from model_util import *
+import pickle
+
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 transform = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5,), (0.5,))])
