@@ -13,9 +13,10 @@ from collections import OrderedDict
 from torch.utils.data import Subset, Dataset
 from sklearn.datasets import fetch_rcv1
 import tqdm
-from network import *
-from optimizer import *
-from model_util import *
+from .network import *
+from .optimizer import *
+from .model_util import *
+import pickle
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 transform = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5,), (0.5,))])
@@ -46,3 +47,5 @@ models = [Net() for i in range(num_workers)]
 net = Network(W, models, m, lrs, trainloaders, 8, nn.CrossEntropyLoss(), device, testloader, EFSGD, [1], "full_reversal" )
 
 a = net.simulate(500, 1)
+
+pickle.dump(a,open("ntwkarc_opt_att_prot.pickle","wb"))
