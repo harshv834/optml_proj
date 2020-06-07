@@ -192,7 +192,7 @@ class Node():
         self.optimizer = EFSGD(self.model.parameters() , lr = 1e-3 )
                 
     
-    def compute_gradient(self, quantizer=None, ):
+    def compute_gradient(self):
         """Computes nabla(x_i, samples) and returns estimate after quantization"""        
         self.optimizer.zero_grad() 
         try:
