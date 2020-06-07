@@ -14,6 +14,7 @@ from torch.utils.data import Subset
 from torch.optim.optimizer import Optimizer
 from optimizer import *
 from model_util import *
+from config import *
 import tqdm
 
 class Net(nn.Module):
@@ -56,7 +57,7 @@ class Net(nn.Module):
 class Network():
     """Define graph"""
     
-    def __init__(self, W, models, datasets, learning_rates, loaders, batch_size, criterion, chosen_device, testloader):
+    def __init__(self, W, models, datasets, learning_rates, loaders, batch_size, criterion, chosen_device, testloader, optimizer, byz_nodes = [] , attack_mode = "" ):
         self.adjacency = W
         self.num_nodes = W.shape[0]
         self.chosen_device = chosen_device
@@ -66,7 +67,8 @@ class Network():
         self.nodes = OrderedDict()
         
         for i in range(self.num_nodes):
-            self.nodes[i] = Node(learning_rates[i], loaders[i], self.batch_size, datasets[i], models[i], criterion, self.chosen_device)
+            isbyn = i in byz_nodes
+            self.nodes[i] = Node(learning_rates[i], loaders[i], self.batch_size, datasets[i], models[i], criterion, self.chosen_device, optimizer, isbyn , attack_mode )
             for j in range(self.num_nodes):
                 if(j != i and W[i, j] > 0):
                     self.nodes[i].neighbors.append(j)
@@ -95,7 +97,7 @@ class Network():
                     logits, predicted = outputs.max(1)
                     #print(logits)
                     
-                    for i in range(batch_size):
+                    for i in range(labels.size(0)):
                         consensus[i] = consensus[i]+torch.where(outputs[i].eq(logits[i]), torch.Tensor([1]).to(self.chosen_device), torch.Tensor([0]).to(self.chosen_device))              
                 
                 logits, final_pred = consensus.max(1)
@@ -122,7 +124,7 @@ class Network():
             for j in tqdm.tqdm(range(iterations)):
                 if((j+1) % 500 == 0 and j != 0):
    
-                  test_acc = self.consensus_test(self.testloader, self.batch_size)
+                  test_acc = self.consensus_test(self.testloader)
                   for k in range(self.num_nodes):
                     loss_dict = self.nodes[k].calc_node_loss(self.testloader, self.chosen_device)
                     loss_dict["consensus_test"] = test_acc
@@ -144,8 +146,12 @@ class Network():
                 for m,param in enumerate(self.nodes[l].optimizer.param_groups[group_id]['params']):
                     if param.grad is None:
                         continue
-                      
-                    gt_update = self.nodes[l].curr_gt[group_id][m].clone()
+                    
+                    if self.nodes[l].isbyn :
+                        # if it is a byzantine load then update as per original.
+                        gt_update = self.nodes[l].orig_gt[group_id][m].clone()
+                    else: 
+                        gt_update = self.nodes[l].curr_gt[group_id][m].clone()
                     wt_sum = 1
                     for n in self.nodes[l].neighbors:
                         gt_update= gt_update + self.nodes[l].neighbor_wts[n] *self.nodes[n].curr_gt[group_id][m]
@@ -155,12 +161,13 @@ class Network():
         
         
     def attack(self):
+        #attack based on gradients of neighbours.
         return
 
 class Node():
     """Node(Choco_Gossip): x_i(t+1) = x_i(t) + gamma*Sum(w_ij*[xhat_j(t+1) - xhat_i(t+1)])"""
     
-    def __init__(self, gamma, loader, batch_size, dataset, model, criterion, chosen_device):
+    def __init__(self, gamma, loader, batch_size, dataset, model, criterion, chosen_device, optimizer , isbyn = False, attack_mode = ""):
         
         self.neighbors = []
 
@@ -170,6 +177,13 @@ class Node():
         self.dataset = dataset
 
         self.dataloader = loader
+
+        self.isbyn = isbyn
+
+        assert  attack_mode in [ "", "full_reversal","random_reversal" ] 
+
+        self.attack_mode = attack_mode
+
         
         self.model = model
         self.chosen_device = chosen_device
@@ -189,7 +203,13 @@ class Node():
         
         self.dataiter = iter(self.dataloader)
         
-        self.optimizer = EFSGD(self.model.parameters() , lr = 1e-3 )
+        self.optimizer = optimizer(self.model.parameters() , lr = self.step_size )
+
+        #broadcast
+        self.curr_gt = None
+
+        #original gradient for self update
+        self.orig_gt = None
                 
     
     def compute_gradient(self):
@@ -212,11 +232,29 @@ class Node():
                 if param.grad is None:
                     continue
                 state = self.optimizer.state[param]
-                param_update[k] = state['update'][k].clone().detach()
+                param_update[k] = state['update'].clone().detach()
             gt.append(param_update)    
         self.curr_gt =  gt
+        if self.isbyn and self.attack_mode != "":
+            self.attack()
         return
-    
+
+    def attack(self):
+        self.orig_gt = []
+        for group_grad in self.curr_gt:
+            orig = OrderedDict()
+            for key,grad in group_grad.items():
+                orig[key] = grad.clone().detach()
+                if self.attack_mode == "full_reversal" :
+                    grad = grad*-1
+                elif self.attack_mode == "random_reversal" :
+                    rev = torch.rand(*grad.shape) < RANDOM_REV 
+                    sign_rev = torch.sign(grad) * ( 1 + rev.float()*-2 )
+                    grad = grad * sign_rev 
+                else:
+                    continue
+            self.orig_gt.append(orig)
+
     def assign_params(self, W):
         """Assign dict W to model"""
         
