@@ -41,9 +41,10 @@ class EFSGD(Optimizer):
                 state['error_correction'] = p - g
                 state['update'] = g
 
+
 class signSGD(Optimizer):
     def __init__(self, params, lr ):
-        super(EFSGD,self).__init__( params , dict( lr = lr ) )
+        super(signSGD,self).__init__( params , dict( lr = lr ) )
         for group in self.param_groups:
             for param in group['params']:
                 state = self.state[param]
@@ -59,11 +60,9 @@ class signSGD(Optimizer):
                 lr = state['lr']
                 state['update'] = lr*param.grad.data.sign()
 
-                
-
 class QSGD_lossy(Optimizer):
     def __init__(self, params, lr ):
-        super(EFSGD,self).__init__( params , dict( lr = lr ) )
+        super(QSGD_lossy,self).__init__( params , dict( lr = lr ) )
         for group in self.param_groups:
             for param in group['params']:
                 state = self.state[param]
@@ -82,7 +81,7 @@ class QSGD_lossy(Optimizer):
 
 class QSGD_topk(Optimizer):
     def __init__(self, params, lr ):
-        super(EFSGD,self).__init__( params , dict( lr = lr ) )
+        super(QSGD_topk,self).__init__( params , dict( lr = lr ) )
         for group in self.param_groups:
             for param in group['params']:
                 state = self.state[param]
@@ -101,7 +100,7 @@ class QSGD_topk(Optimizer):
                 
 class QEFSGD_lossy(Optimizer):
     def __init__(self, params, lr,beta,alpha):
-        super(EFSGD,self).__init__( params , dict( lr = lr, beta = beta,alpha=alpha) )
+        super(QEFSGD_lossy,self).__init__( params , dict( lr = lr, beta = beta,alpha=alpha) )
         for group in self.param_groups:
             for param in group['params']:
                 state = self.state[param]
@@ -123,7 +122,7 @@ class QEFSGD_lossy(Optimizer):
 
 class QEFSGD_topk(Optimizer):
     def __init__(self, params, lr,beta,alpha):
-        super(EFSGD,self).__init__( params , dict( lr = lr, beta = beta,alpha=alpha) )
+        super(QEFSGD_topk,self).__init__( params , dict( lr = lr, beta = beta,alpha=alpha) )
         for group in self.param_groups:
             for param in group['params']:
                 state = self.state[param]

@@ -43,6 +43,6 @@ for i in range(num_workers):
 
 models = [Net() for i in range(num_workers)]
 
-net = Network(W, models, m, lrs, trainloaders, 8, nn.CrossEntropyLoss(), device, testloader)
+net = Network(W, models, m, lrs, trainloaders, 8, nn.CrossEntropyLoss(), device, testloader, EFSGD, [1], "full_reversal" )
 
 a = net.simulate(500, 1)
