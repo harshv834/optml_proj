@@ -16,6 +16,7 @@ from optimizer import *
 from model_util import *
 from config import *
 import tqdm
+from protecc import *
 
 class Net(nn.Module):
     def __init__(self):
@@ -148,14 +149,21 @@ class Network():
                     
                     if self.nodes[l].isbyn :
                         # if it is a byzantine node then update as per original.
-                        gt_update = self.nodes[l].orig_gt[group_id][m].clone()
+                        gt_update = [self.nodes[l].orig_gt[group_id][m].clone()]
                     else: 
-                        gt_update = self.nodes[l].curr_gt[group_id][m].clone()
-                    wt_sum = 1
+                        gt_update = [self.nodes[l].curr_gt[group_id][m].clone()]
+                    wt_sum = [1]
                     for n in self.nodes[l].neighbors:
-                        gt_update= gt_update + self.nodes[l].neighbor_wts[n] *self.nodes[n].curr_gt[group_id][m]
-                        wt_sum = wt_sum + abs( self.nodes[l].neighbor_wts[n] )
-                    gt_update = gt_update/wt_sum
+                        gt_update.append(self.nodes[l].neighbor_wts[n] *self.nodes[n].curr_gt[group_id][m])
+                        wt_sum.append(abs( self.nodes[l].neighbor_wts[n] ))
+                    if self.protec == 'majority':
+                        gt_update = get_vote(gt_update)
+                    elif self.protec == 'median':
+                        gt_update = get_statistic(gt_update,option=1)
+                    elif self.protec == 'trmean':
+                        gt_update = get_statistic(gt_update,option=2)
+                    else:
+                        gt_update = sum(gt_update)/sum(wt_sum)
                     param.grad.data -= gt_update
         
         

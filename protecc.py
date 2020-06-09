@@ -19,10 +19,10 @@ from torch.utils.data import Subset
 
 def get_vote(grads):
     """Grads is a list of vectors coming from the node and its neighbors only, grads[0] = node.grad"""
-    V = torch.zeros_like(grad[0])
+    V = torch.zeros_like(grads[0])
     
     for i in grads:
-        V+=torch.sign(grad[i].clone().detach())
+        V+=torch.sign(i.clone().detach())
     
     return V
 
@@ -42,7 +42,8 @@ def get_statistic(grads, option = 1, beta = 1/3):
     V = torch.stack(grads, dim=0)
     
     if(option ==1):
-        temp = torch.median(V, dim=0).clone().detach()
+        values, indices = torch.median(V, dim=0)
+        temp = values.clone().detach()
     else:
         m = torch.sort(V, dim=0)[0].clone().detach()
         first_index = int(beta*m.size()[0])
