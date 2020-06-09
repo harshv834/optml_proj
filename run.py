@@ -39,8 +39,9 @@ trainloaders = [torch.utils.data.DataLoader(m[i], batch_size=8, shuffle=True, nu
 W = ring(num_workers)
 lrs = []
 
+
 for i in range(num_workers):
-    lrs.append(1e-3)
+    lrs.append({'lr':1e-3,'beta':0.9,'alpha':0.1})
 
 models = [Net() for i in range(num_workers)]
 
