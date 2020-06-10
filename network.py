@@ -164,7 +164,7 @@ class Network():
                         gt_update = get_statistic(gt_update,option=2)
                     else:
                         gt_update = sum(gt_update)/sum(wt_sum)
-                    param.grad.data -= gt_update
+                    param.data -= gt_update
         
         
     def attack(self):
