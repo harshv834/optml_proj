@@ -120,13 +120,14 @@ class Network():
             record_sims[k] = []
 
         
-        for i in tqdm.tqdm(range(epochs)):
-            for j in tqdm.tqdm(range(iterations)):
+        for i in range(epochs):
+            for j in range(iterations):
                 if((j+1) % 500 == 0 and j != 0):
    
                   test_acc = self.consensus_test(self.testloader)
                   for k in range(self.num_nodes):
                     loss_dict = self.nodes[k].calc_node_loss(self.testloader, self.chosen_device)
+                    print( loss_dict )
                     loss_dict["consensus_test"] = test_acc
                     loss_dict["iteration"] = j
                     record_sims[k].append(loss_dict)
@@ -164,7 +165,7 @@ class Network():
                         gt_update = get_statistic(gt_update,option=2)
                     else:
                         gt_update = sum(gt_update)/sum(wt_sum)
-                    param.grad.data -= gt_update
+                    param.data -= gt_update
         
         
     def attack(self):
