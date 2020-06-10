@@ -127,7 +127,6 @@ class Network():
                   test_acc = self.consensus_test(self.testloader)
                   for k in range(self.num_nodes):
                     loss_dict = self.nodes[k].calc_node_loss(self.testloader, self.chosen_device)
-                    print( loss_dict )
                     loss_dict["consensus_test"] = test_acc
                     loss_dict["iteration"] = j
                     record_sims[k].append(loss_dict)
