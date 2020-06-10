@@ -15,9 +15,9 @@ from torch.utils.data import Subset
 def quantizer_topk(gradient, k = 5):
     absoulte = torch.abs( gradient )
     sign  = torch.sign(gradient)
-    values,indices = torch.topk( gradient, k , sorted = False )
-    gradient = torch.zeros( *gradient.shape )
-    gradient[indices] = values
+    values,indices = torch.topk( absoulte, k , sorted = False ,dim=0)
+    gradient.zero_()
+    gradient.scatter_(0,indices,values)
     #transform gradient to torch
     return gradient*sign
 
@@ -27,7 +27,6 @@ def quantizer_lossy( gradient, k = 64 ):
     absoulte = ( absoulte/norm )*k
     floor = torch.floor(absoulte)
     random_ceil = torch.rand(*gradient.shape) < ( gradient - floor )
-    print( random_ceil )
     floor = ( floor + random_ceil.float() ) * (1/k)
     #rescale
     return (norm) * ( torch.sign(gradient) * floor )

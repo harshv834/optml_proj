@@ -12,10 +12,11 @@ import os
 from collections import OrderedDict
 from torch.utils.data import Subset
 from torch.optim.optimizer import Optimizer
-from .optimizer import *
-from .model_util import *
-from .config import *
+from optimizer import *
+from model_util import *
+from config import *
 import tqdm
+from protecc import *
 
 class Net(nn.Module):
     def __init__(self):
@@ -57,18 +58,18 @@ class Net(nn.Module):
 class Network():
     """Define graph"""
     
-    def __init__(self, W, models, datasets, learning_rates, loaders, batch_size, criterion, chosen_device, testloader, optimizer, byz_nodes = [] , attack_mode = "" ):
+    def __init__(self, W, models, datasets, opt_param_dicts, loaders, batch_size, criterion, chosen_device, testloader, optimizer, byz_nodes = [] , attack_mode = "" ,protec = None):
         self.adjacency = W
         self.num_nodes = W.shape[0]
         self.chosen_device = chosen_device
         self.batch_size = batch_size
         self.testloader = testloader
-        
+        self.protec = protec
         self.nodes = OrderedDict()
         
         for i in range(self.num_nodes):
             isbyn = i in byz_nodes
-            self.nodes[i] = Node(learning_rates[i], loaders[i], self.batch_size, datasets[i], models[i], criterion, self.chosen_device, optimizer, isbyn , attack_mode )
+            self.nodes[i] = Node(opt_param_dicts[i], loaders[i], self.batch_size, datasets[i], models[i], criterion, self.chosen_device, optimizer, isbyn , attack_mode )
             for j in range(self.num_nodes):
                 if(j != i and W[i, j] > 0):
                     self.nodes[i].neighbors.append(j)
@@ -147,15 +148,22 @@ class Network():
                         continue
                     
                     if self.nodes[l].isbyn :
-                        # if it is a byzantine load then update as per original.
-                        gt_update = self.nodes[l].orig_gt[group_id][m].clone()
+                        # if it is a byzantine node then update as per original.
+                        gt_update = [self.nodes[l].orig_gt[group_id][m].clone()]
                     else: 
-                        gt_update = self.nodes[l].curr_gt[group_id][m].clone()
-                    wt_sum = 1
+                        gt_update = [self.nodes[l].curr_gt[group_id][m].clone()]
+                    wt_sum = [1]
                     for n in self.nodes[l].neighbors:
-                        gt_update= gt_update + self.nodes[l].neighbor_wts[n] *self.nodes[n].curr_gt[group_id][m]
-                        wt_sum = wt_sum + abs( self.nodes[l].neighbor_wts[n] )
-                    gt_update = gt_update/wt_sum
+                        gt_update.append(self.nodes[l].neighbor_wts[n] *self.nodes[n].curr_gt[group_id][m])
+                        wt_sum.append(abs( self.nodes[l].neighbor_wts[n] ))
+                    if self.protec == 'majority':
+                        gt_update = get_vote(gt_update)
+                    elif self.protec == 'median':
+                        gt_update = get_statistic(gt_update,option=1)
+                    elif self.protec == 'trmean':
+                        gt_update = get_statistic(gt_update,option=2)
+                    else:
+                        gt_update = sum(gt_update)/sum(wt_sum)
                     param.grad.data -= gt_update
         
         
@@ -166,12 +174,12 @@ class Network():
 class Node():
     """Node(Choco_Gossip): x_i(t+1) = x_i(t) + gamma*Sum(w_ij*[xhat_j(t+1) - xhat_i(t+1)])"""
     
-    def __init__(self, gamma, loader, batch_size, dataset, model, criterion, chosen_device, optimizer , isbyn = False, attack_mode = ""):
+    def __init__(self, opt_param_dict, loader, batch_size, dataset, model, criterion, chosen_device, optimizer , isbyn = False, attack_mode = ""):
         
         self.neighbors = []
 
         self.neighbor_wts = {}
-        self.step_size = gamma
+        self.opt_param_dict = opt_param_dict
 
         self.dataset = dataset
 
@@ -202,9 +210,8 @@ class Node():
         
         self.dataiter = iter(self.dataloader)
         self.model.to(self.chosen_device)
-        self.optimizer = EFSGD(self.model.parameters() , lr = 1e-3 )
         
-        self.optimizer = optimizer(self.model.parameters() , lr = self.step_size )
+        self.optimizer = optimizer(self.model.parameters() , **self.opt_param_dict )
 
         #broadcast
         self.curr_gt = None

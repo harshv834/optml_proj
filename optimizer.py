@@ -12,7 +12,7 @@ import os
 from collections import OrderedDict
 from torch.utils.data import Subset
 from torch.optim.optimizer import Optimizer
-from .model_util import *
+from model_util import *
 
 class EFSGD(Optimizer):
     def __init__(self, params, lr):
@@ -108,6 +108,8 @@ class QEFSGD_lossy(Optimizer):
                 state['lr'] = lr
                 state['beta'] =beta
                 state['alpha'] =alpha
+
+                
                     
     def step(self):
         for group in self.param_groups:
@@ -117,11 +119,11 @@ class QEFSGD_lossy(Optimizer):
                 state = self.state[param] 
                 lr = state['lr']
                 state['update'] = lr*quantizer_lossy(state['error_correction']*state['alpha'] + param.grad.data)
-                state['error_correction'] = beta*state['error_correction'] - state['update'] +param.grad.data 
+                state['error_correction'] = state['beta']*state['error_correction']- state['update'] +param.grad.data 
                 
 
 class QEFSGD_topk(Optimizer):
-    def __init__(self, params, lr,beta,alpha):
+    def __init__(self, params, lr,beta=0.9,alpha=0.1):
         super(QEFSGD_topk,self).__init__( params , dict( lr = lr, beta = beta,alpha=alpha) )
         for group in self.param_groups:
             for param in group['params']:
@@ -139,5 +141,5 @@ class QEFSGD_topk(Optimizer):
                 state = self.state[param] 
                 lr = state['lr']
                 state['update'] = lr*quantizer_topk(state['error_correction']*state['alpha'] + param.grad.data)
-                state['error_correction'] = beta*state['error_correction'] - state['update'] +param.grad.data 
+                state['error_correction'] = state['beta']*state['error_correction'] - state['update'] +param.grad.data 
                 
