@@ -27,7 +27,11 @@ def quantizer_lossy( gradient, k = 64 ):
     absoulte = torch.abs( gradient )
     absoulte = ( absoulte/norm )*k
     floor = torch.floor(absoulte)
-    random_ceil = torch.rand(*gradient.shape) < ( gradient - floor )
+    if gradient.is_cuda:
+        dev = "cuda:0"
+    else:
+        dev = "cpu"
+    random_ceil = torch.rand(*gradient.shape,device = dev) < ( gradient - floor )
     floor = ( floor + random_ceil.float() ) * (1/k)
     #rescale
     return (norm) * ( torch.sign(gradient) * floor )
