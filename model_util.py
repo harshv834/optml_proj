@@ -11,6 +11,7 @@ import time
 import os
 from collections import OrderedDict
 from torch.utils.data import Subset
+import networkx
 
 def quantizer_topk(gradient, k = 5):
     absoulte = torch.abs( gradient )
