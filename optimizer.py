@@ -65,7 +65,7 @@ class QSGD_lossy(Optimizer):
             for param in group['params']:
                 state = self.state[param]
                 state['lr'] = lr
-                state['update'] = torch.zeros_like( param.grad.data )
+                state['update'] = torch.zeros_like( param.data )
                 
                     
     def step(self):
@@ -140,3 +140,20 @@ class QEFSGD_topk(Optimizer):
                 state['update'] = lr*quantizer_topk(state['error_correction']*state['alpha'] + param.grad.data)
                 state['error_correction'] = state['beta']*state['error_correction'] - state['update'] +param.grad.data 
                 
+
+class localSGD(Optimizer):
+    def __init__(self, params, lr):
+        super(localSGD,self).__init__( params , dict( lr = lr ) )
+        for group in self.param_groups:
+            for param in group['params']:
+                state = self.state[param]
+                state['lr'] = lr
+                    
+    def step(self):
+        for group in self.param_groups:
+            for k,param in enumerate(group['params']):
+                if param.grad is None:
+                    continue
+                state = self.state[param] 
+                lr = state['lr']
+                state['update'] = lr*param.grad.data
