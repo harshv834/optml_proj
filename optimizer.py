@@ -22,8 +22,6 @@ class EFSGD(Optimizer):
                 state = self.state[param]
                 state['error_correction'] = torch.zeros_like( param.data )
                 state['lr'] = lr
-          
-                
                     
     def step(self):
         for group in self.param_groups:
@@ -67,6 +65,7 @@ class QSGD_lossy(Optimizer):
             for param in group['params']:
                 state = self.state[param]
                 state['lr'] = lr
+                state['update'] = torch.zeros_like( param.grad.data )
                 
                     
     def step(self):
@@ -85,8 +84,7 @@ class QSGD_topk(Optimizer):
         for group in self.param_groups:
             for param in group['params']:
                 state = self.state[param]
-                state['lr'] = lr
-                
+                state['lr'] = lr                
                     
     def step(self):
         for group in self.param_groups:
@@ -108,7 +106,6 @@ class QEFSGD_lossy(Optimizer):
                 state['lr'] = lr
                 state['beta'] =beta
                 state['alpha'] =alpha
-
                 
                     
     def step(self):
