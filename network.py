@@ -146,11 +146,11 @@ class Network():
 					if param.grad is None:
 						continue
 					
-					if self.nodes[l].isbyn :
+					#if self.nodes[l].isbyn :
 						# if it is a byzantine node then update as per original.
-						gt_update = [self.nodes[l].orig_gt[group_id][m].clone()]
-					else: 
-						gt_update = [self.nodes[l].curr_gt[group_id][m].clone()]
+					#	gt_update = [self.nodes[l].orig_gt[group_id][m].clone()]
+					#else: 
+					gt_update = [self.nodes[l].curr_gt[group_id][m].clone()]
 					wt_sum = [1]
 					for n in self.nodes[l].neighbors:
 						gt_update.append(self.nodes[l].neighbor_wts[n] *self.nodes[n].curr_gt[group_id][m])
@@ -256,7 +256,7 @@ class Node():
 			for key,grad in group_grad.items():
 				orig[key] = grad.clone().detach()
 				if self.attack_mode == "full_reversal" :
-					grad = grad*-1
+					grad  *= -1
 				elif self.attack_mode == "random_reversal" :
 					rev = torch.rand(*grad.shape) < RANDOM_REV 
 					sign_rev = torch.sign(grad) * ( 1 + rev.float()*-2 )
