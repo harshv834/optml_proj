@@ -123,12 +123,12 @@ class Network():
 		for i in tqdm.tqdm(range(epochs)):
 			for j in tqdm.tqdm(range(iterations)):
 				if((j+1) % 500 == 0 and j != 0):
-				  test_acc = self.consensus_test(self.testloader)
-				  for k in range(self.num_nodes):
-					loss_dict = self.nodes[k].calc_node_loss(self.testloader, self.chosen_device)
-					loss_dict["consensus_test"] = test_acc
-					loss_dict["iteration"] = j
-					record_sims[k].append(loss_dict)
+					test_acc = self.consensus_test(self.testloader)
+					for k in range(self.num_nodes):
+						loss_dict = self.nodes[k].calc_node_loss(self.testloader, self.chosen_device)
+						loss_dict["consensus_test"] = test_acc
+						loss_dict["iteration"] = j
+						record_sims[k].append(loss_dict)
 				if(j % 500 == 0):
 					print(j)
 
