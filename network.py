@@ -129,8 +129,9 @@ class Network():
 						loss_dict["consensus_test"] = test_acc
 						loss_dict["iteration"] = j
 						record_sims[k].append(loss_dict)
-				if(j % 500 == 0):
-					print(j)
+						
+					for r in range(3):
+						print( record_sims[r][-1] )  
 
 				for k in range(self.num_nodes):
 					self.nodes[k].compute_gradient()
