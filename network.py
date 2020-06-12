@@ -130,7 +130,7 @@ class Network():
 						loss_dict["iteration"] = j
 						record_sims[k].append(loss_dict)
 
-					for r in range(num_nodes):
+					for r in range(self.num_nodes):
 						print( record_sims[r][-1] )  
 
 				for k in range(self.num_nodes):
