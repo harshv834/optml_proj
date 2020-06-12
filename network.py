@@ -58,7 +58,7 @@ class Net(nn.Module):
 class Network():
 	"""Define graph"""
 	
-	def __init__(self, W, models, datasets, opt_param_dicts, loaders, batch_size, criterion, chosen_device, testloader, optimizer, byz_nodes = [] , attack_mode = "" ,protec = None):
+	def __init__(self, W, models, datasets, opt_param_dicts, loaders, batch_size, criterion, chosen_device, testloader, optimizer, byz_nodes = [] , attack_mode = "" ,protec = None,beta_protec = 1/3):
 		self.adjacency = W
 		self.num_nodes = W.shape[0]
 		self.chosen_device = chosen_device
@@ -66,7 +66,7 @@ class Network():
 		self.testloader = testloader
 		self.protec = protec
 		self.nodes = OrderedDict()
-		
+		self.beta_protec = beta_protec
 		for i in range(self.num_nodes):
 			isbyn = i in byz_nodes
 			self.nodes[i] = Node(opt_param_dicts[i], loaders[i], self.batch_size, datasets[i], models[i], criterion, self.chosen_device, optimizer, isbyn , attack_mode )
@@ -129,7 +129,7 @@ class Network():
 						loss_dict["consensus_test"] = test_acc
 						loss_dict["iteration"] = j
 						record_sims[k].append(loss_dict)
-						
+
 					for r in range(3):
 						print( record_sims[r][-1] )  
 
@@ -162,6 +162,8 @@ class Network():
 						gt_update = get_statistic(gt_update,option=1)
 					elif self.protec == 'trmean':
 						gt_update = get_statistic(gt_update,option=2)
+					elif self.protec == "frac_mean":
+						gt_update = get_frac(gt_update,beta = self.beta_protec)
 					else:
 						gt_update = sum(gt_update)/sum(wt_sum)
 					param.data -= gt_update
@@ -188,6 +190,7 @@ class Node():
 		self.isbyn = isbyn
 
 		assert  attack_mode in [ "", "full_reversal","random_reversal" ] 
+		
 
 		self.attack_mode = attack_mode
 
