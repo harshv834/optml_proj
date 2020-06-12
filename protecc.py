@@ -64,7 +64,10 @@ def get_statistic(grads, option = 1, beta = 1/3):
 
 
 def get_frac(grads, beta = 1/3):
-    V = torch.stack(grads, dim=0)
-    gradnorm,_ = torch.sort(torch.norm(V,dim=0).clone().detach())
-    temp = gradnorm[:int((1-beta)*len(grads))].mean()
-    return temp
+    V = torch.tensor([torch.norm(grad) for grad in grads])
+    _,idx = torch.sort(V)
+    t = int((1-beta)*len(grads))
+    id_keep = idx[:t].int().tolist()
+    new_grads = [grads[i].clone() for i in id_keep]
+    
+    return sum(new_grads)/len(new_grads)
