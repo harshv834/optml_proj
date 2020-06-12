@@ -287,7 +287,7 @@ class Node():
 					grad  *= -1
 				elif self.attack_mode == "random_reversal" :
 					# randomly change the sign of the gradients with probability RANDOM_REV,
-					rev = torch.rand(*grad.shape) < RANDOM_REV 
+					rev = torch.rand(*grad.shape,device=self.chosen_device) < RANDOM_REV 
 					sign_rev = torch.sign(grad) * ( 1 + rev.float()*-2 )
 					grad = grad * sign_rev 
 				else:

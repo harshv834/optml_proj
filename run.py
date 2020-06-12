@@ -84,7 +84,7 @@ beta_protec = 2/5
 
 net = Network(W, models, m, lrs, trainloaders, 32, nn.CrossEntropyLoss(), device, testloader, signSGD, [3,5], attack, protec, beta_protec  )
 
-iterations = 100
+iterations = 3000
 epochs = 1
 results = net.simulate(iterations, epochs)
 
