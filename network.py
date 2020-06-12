@@ -122,7 +122,7 @@ class Network():
 		
 		for i in tqdm.tqdm(range(epochs)):
 			for j in tqdm.tqdm(range(iterations)):
-				if((j+1) % 500 == 0 and j != 0):
+				if((j+1) % 100 == 0 and j != 0):
 					test_acc = self.consensus_test(self.testloader)
 					for k in range(self.num_nodes):
 						loss_dict = self.nodes[k].calc_node_loss(self.testloader, self.chosen_device)
@@ -130,7 +130,7 @@ class Network():
 						loss_dict["iteration"] = j
 						record_sims[k].append(loss_dict)
 
-					for r in range(3):
+					for r in range(num_nodes):
 						print( record_sims[r][-1] )  
 
 				for k in range(self.num_nodes):
@@ -190,7 +190,7 @@ class Node():
 		self.isbyn = isbyn
 
 		assert  attack_mode in [ "", "full_reversal","random_reversal" ] 
-		
+
 
 		self.attack_mode = attack_mode
 
