@@ -18,6 +18,7 @@ from config import *
 import tqdm
 from protecc import *
 
+# The neural net we use to train the model on each node. 
 class Net(nn.Module):
 	def __init__(self):
 		super(Net, self).__init__()
@@ -30,7 +31,7 @@ class Net(nn.Module):
 		#self.fc2 = nn.Linear(120, 84)
 		self.fc2 = nn.Linear(64, 10)
 		self.init_weights()
-
+# Forward pass of the nn.
 	def forward(self, x):
 		x = self.pool(F.relu(self.conv1(x)))
 		x = self.pool(F.relu(self.conv2(x)))
@@ -55,9 +56,15 @@ class Net(nn.Module):
 				m.bias.data.zero_()
 				torch.nn.init.xavier_uniform_(m.weight)
 
+# The base case which simulates the decentralized updates and gradient computations. 
 class Network():
 	"""Define graph"""
-	
+	# Byz_nodes contains the list of the byzantine nodes.
+    # attack_mode determines the method  in which the byzantine node perform gradient attacks. 
+    # protec determines how to get the aggregated gradient after recieving the gradients of the neighbors
+    # optimizer specifies the algorithm for computing the gradient and  update 
+    # W determines the adjaceny matrix of the network.
+    # opt_param_dicts contains the dictonary of the hyper parameters	
 	def __init__(self, W, models, datasets, opt_param_dicts, loaders, batch_size, criterion, chosen_device, testloader, optimizer, byz_nodes = [] , attack_mode = "" ,protec = None,beta_protec = 1/3):
 		self.adjacency = W
 		self.num_nodes = W.shape[0]
@@ -75,7 +82,7 @@ class Network():
 					self.nodes[i].neighbors.append(j)
 					self.nodes[i].neighbor_wts[j] = W[i, j]
 					
-			
+	# Calculate the test accuracy by taking the majority of the nodes in the network.			
 	def consensus_test(self, loader):
 		""" forwards test samples and calculates the test accuracy """
 
@@ -122,6 +129,7 @@ class Network():
 		
 		for i in tqdm.tqdm(range(epochs)):
 			for j in tqdm.tqdm(range(iterations)):
+                # for every 500 iterations report training accuracy and test accuracy for generating plots				
 				if((j+1) % 100 == 0 and j != 0):
 					test_acc = self.consensus_test(self.testloader)
 					for k in range(self.num_nodes):
@@ -130,12 +138,11 @@ class Network():
 						loss_dict["iteration"] = j
 						record_sims[k].append(loss_dict)
 
-					for r in range(3):
-						print( record_sims[r][-1] )  
-
+			    # Compute gradient of all the nodes not that this gradient itself is quantized or 
+                # compressed according to the  optimizer  
 				for k in range(self.num_nodes):
 					self.nodes[k].compute_gradient()
-				
+                # This was in place for attacks which uses gradients from the previous iterations.				
 				self.attack()
 				self.update_network()
 		return record_sims
@@ -156,16 +163,26 @@ class Network():
 					for n in self.nodes[l].neighbors:
 						gt_update.append(self.nodes[l].neighbor_wts[n] *self.nodes[n].curr_gt[group_id][m])
 						wt_sum.append(abs( self.nodes[l].neighbor_wts[n] ))
+
+					# Apply the protec methods     
+
+                    # majority of all the gradients of the neighbours including its own gradient 
+                    # used against adversarial attacks for signSGD 
 					if self.protec == 'majority':
 						gt_update = get_vote(gt_update)
+					# Takes the median of the gradients.
 					elif self.protec == 'median':
 						gt_update = get_statistic(gt_update,option=1)
+					# Takes the mean of the gradients after removing both max and min outlier.
 					elif self.protec == 'trmean':
 						gt_update = get_statistic(gt_update,option=2)
+					# Takes the average of the gradients after removing beta fraction of the highest normed gradients.
 					elif self.protec == "frac_mean":
 						gt_update = get_frac(gt_update,beta = self.beta_protec)
 					else:
+						# In case of no protec method aggregate as per ChocoSGD.
 						gt_update = sum(gt_update)/sum(wt_sum)
+					# update the weights as per the aggregated gradient.
 					param.data -= gt_update
 		
 		
@@ -175,7 +192,9 @@ class Network():
 
 class Node():
 	"""Node(Choco_Gossip): x_i(t+1) = x_i(t) + gamma*Sum(w_ij*[xhat_j(t+1) - xhat_i(t+1)])"""
-	
+	# opt_param_dicts contains the dictonary of the hyper parameters
+    # isbyn determines if the node is a byzantine node
+    # attack_mode determines the method  in which the byzantine node perform gradient attacks.
 	def __init__(self, opt_param_dict, loader, batch_size, dataset, model, criterion, chosen_device, optimizer , isbyn = False, attack_mode = ""):
 		
 		self.neighbors = []
@@ -224,7 +243,8 @@ class Node():
 				
 	
 	def compute_gradient(self):
-		"""Computes nabla(x_i, samples) and returns estimate after quantization"""        
+		"""Computes nabla(x_i, samples) and returns estimate after quantization""" 
+		# Erase the existing gradients.        
 		self.optimizer.zero_grad() 
 		try:
 			inputs, targets = self.dataiter.next()
@@ -236,9 +256,12 @@ class Node():
 		
 		output = self.model(inputs)
 		loss = self.criterion(output, targets)
+		# Backpass to compute the gradients.
 		loss.backward()
 		
+		# The gradient quantization happens in the step.
 		self.optimizer.step()
+		# The list stores all the gradient updates across param groups.
 		gt = []
 		for group in self.optimizer.param_groups:
 			param_update = OrderedDict()
@@ -260,13 +283,16 @@ class Node():
 			for key,grad in group_grad.items():
 				orig[key] = grad.clone().detach()
 				if self.attack_mode == "full_reversal" :
+					# Invert the complete gradient in case of the full reversal.
 					grad  *= -1
 				elif self.attack_mode == "random_reversal" :
+					# randomly change the sign of the gradients with probability RANDOM_REV,
 					rev = torch.rand(*grad.shape) < RANDOM_REV 
 					sign_rev = torch.sign(grad) * ( 1 + rev.float()*-2 )
 					grad = grad * sign_rev 
 				else:
 					continue
+			# store the original gradient for the byzantine node.
 			self.orig_gt.append(orig)
 
 	def assign_params(self, W):
@@ -277,7 +303,8 @@ class Node():
 		
 		return
 	
-	
+	# calculate the loss and accuracy of the model at the current node for the test set 
+    # Also calculates the train accuracy.
 	def calc_node_loss(self, testloader, chosen_device):
 		""" loss check """
 		

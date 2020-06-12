@@ -13,15 +13,19 @@ from collections import OrderedDict
 from torch.utils.data import Subset
 import networkx
 
+# Restrict the gradient to its largest k absolute values of coordinates.
+# can control the square loss using the parameter k.
 def quantizer_topk(gradient, k = 5):
     absoulte = torch.abs( gradient )
     sign  = torch.sign(gradient)
     values,indices = torch.topk( absoulte, k , sorted = False ,dim=0)
     gradient.zero_()
     gradient.scatter_(0,indices,values)
-    #transform gradient to torch
     return gradient*sign
 
+# Lossy compression.
+# Ref - https://arxiv.org/abs/1610.02132
+# Can control the expected square loss using the parameter k.
 def quantizer_lossy( gradient, k = 64 ):
     norm = torch.norm( gradient )
     absoulte = torch.abs( gradient )
@@ -36,6 +40,7 @@ def quantizer_lossy( gradient, k = 64 ):
     #rescale
     return (norm) * ( torch.sign(gradient) * floor )
 
+# Adjancency graph of the ring.
 def ring( num_workers ):
     ring = torch.zeros([num_workers, num_workers])
     for i in range(num_workers-1):
@@ -44,18 +49,22 @@ def ring( num_workers ):
     #close
     ring[num_workers - 1, 0 ] = 1.0
     ring[num_workers - 1, num_workers-2 ] = 1.0
+    # Make the diagonal 1.
     for i in range(num_workers):
         ring[i,i] = 1
     return ring
 
+# Adjancency graph of the torus.
 def torus(sqrt_num_workers):
     num_workers = sqrt_num_workers*sqrt_num_workers
     torus = networkx.generators.lattice.grid_2d_graph(sqrt_num_workers,sqrt_num_workers, periodic=True)
     torus = networkx.adjacency_matrix(torus).toarray()
+    # Make the diagonal 1.
     for i in range(num_workers):
         torus[i,i] = 1
     return torus
 
+# An example graph where degree of each node is k.
 def degree_k( num_workers , k ):
     half_k = k/2
     W  = torch.zeros([num_workers, num_workers])
@@ -74,11 +83,13 @@ def degree_k( num_workers , k ):
             if i+count < num_workers:
                 W[i, i+count]  = 1.0
             else:
-                W[i, i+count - num_workers ] = 1.0				
+                W[i, i+count - num_workers ] = 1.0
+    # Make the diagonal 1.				
     for i in range(num_workers):
         W[i,i] = 1
     return W
 
+# Splits the dataset across nodes.
 def trainset_node_split(dataset, N, seed = 0):
     np.random.seed(seed)
     a = np.arange(len(dataset))
@@ -89,6 +100,7 @@ def trainset_node_split(dataset, N, seed = 0):
         datasets[i] = Subset(dataset, a[i*size:(i+1)*size].tolist())
     return datasets
 
+# Compares the outputs and labels and returns the count of the correct predictions.
 def count_correct(outputs, labels,criterion):
     """ count correct predictions """
 

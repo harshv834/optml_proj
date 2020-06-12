@@ -1,4 +1,3 @@
-
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -38,13 +37,15 @@ def get_vote(grads):
 def get_statistic(grads, option = 1, beta = 1/3):
     """option=1 == median, option = 2 == mean"""
     
-    
+    # Stack the gradients to perform various statistics
     V = torch.stack(grads, dim=0)
     
     if(option ==1):
+        # Take the median along the stacked dimension.
         values, indices = torch.median(V, dim=0)
         temp = values.clone().detach()
     else:
+        # Sort the coordinates to take in th fraction of [ beta, 1 - beta ].
         m = torch.sort(V, dim=0)[0].clone().detach()
         first_index = int(beta*m.size()[0])
         last_index = int((1-beta)*m.size()[0])
@@ -62,7 +63,7 @@ def get_statistic(grads, option = 1, beta = 1/3):
     return temp.clone().detach()
 
 
-
+# Sort across norm of gradients and take mean excluding the largest beta fraction.
 def get_frac(grads, beta = 1/3):
     V = torch.tensor([torch.norm(grad) for grad in grads])
     _,idx = torch.sort(V)
