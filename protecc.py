@@ -66,6 +66,5 @@ def get_statistic(grads, option = 1, beta = 1/3):
 def get_frac(grads, beta = 1/3):
     V = torch.stack(grads, dim=0)
     gradnorm,_ = torch.sort(torch.norm(V,dim=0).clone().detach())
-    print(gradnorm.shape)
     temp = gradnorm[:int((1-beta)*len(grads))].mean()
     return temp
