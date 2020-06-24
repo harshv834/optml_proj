@@ -1,8 +1,12 @@
 # Robustness of decentralized compressed SGD with gossip communication
 
-To run an instance of our network : 
+To install required libraries
+
 
 `pip install -r requirements.txt`
+
+To run an instance of our network : 
+
 `python run.py`
 
 
